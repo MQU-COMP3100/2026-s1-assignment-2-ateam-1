@@ -5,7 +5,7 @@ import sys
 HOST = "localhost"
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 50000
 BUF_SIZE = 8192
-AUTH_NAME = "asma"
+AUTH_NAME = "ATeam"
 
 sock = socket.socket()
 sock.settimeout(2)
@@ -71,7 +71,7 @@ def get_servers(command):
 
     return servers
 
-def dominant_resource_ratio(server, job):
+def calculate_drf_score(server, job):
     if server["cores"] <= 0 or server["memory"] <= 0 or server["disk"] <= 0:
         return 1
 
@@ -88,7 +88,7 @@ def resource_waste(server, job):
         server["disk"] - job["disk"]
     )
 
-def choose_server(job):
+def select_server(job):
     cores = job["cores"]
     memory = job["memory"]
     disk = job["disk"]
@@ -100,7 +100,7 @@ def choose_server(job):
         def available_score(s):
             queue = s["waiting"] + s["running"]
             core_waste, mem_waste, disk_waste = resource_waste(s, job)
-            fit = 1 - dominant_resource_ratio(s, job)
+            fit = 1 - calculate_drf_score(s, job)
             active_penalty = 0 if s["state"] == "active" else 1
 
             if runtime <= 300:
@@ -144,7 +144,7 @@ def choose_server(job):
         def capable_score(s):
             queue = s["waiting"] + s["running"]
             core_waste, mem_waste, disk_waste = resource_waste(s, job)
-            fit = 1 - dominant_resource_ratio(s, job)
+            fit = 1 - calculate_drf_score(s, job)
             active_penalty = 0 if s["state"] in ("active", "booting") else 1
 
             if runtime <= 300:
@@ -207,7 +207,7 @@ def main():
                 "runtime": int(parts[6])
             }
 
-            server = choose_server(job)
+            server = select_server(job)
 
             if server is not None:
                 send(f"SCHD {job['id']} {server['type']} {server['id']}")

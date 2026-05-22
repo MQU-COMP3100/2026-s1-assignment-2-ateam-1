@@ -35,3 +35,9 @@ in other one, execute the ds-client:
 ./ds-client -n -p 50000 -a bf
 ```
 
+
+## How to run and test client.py:
+Use this command
+```bash
+python3 ./ds_test.py "python3 client.py" -n -p 50000 -c TestConfigs
+```
