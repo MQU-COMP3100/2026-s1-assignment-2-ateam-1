@@ -75,7 +75,7 @@ def get_servers(command):
     return servers
 
 
-def calculate_drf_score(server, job):
+def calculate_drfScore(server, job):
     if server["cores"] <= 0 or server["memory"] <= 0 or server["disk"] <= 0:
         return 1
 
@@ -101,7 +101,7 @@ def available_score(server, job):
 
     core_waste, mem_waste, disk_waste = resource_waste(server, job)
 
-    fit = 1 - calculate_drf_score(server, job)
+    fit = 1 - calculate_drfScore(server, job)
 
     active_penalty = 0 if server["state"] == "active" else 1
 
@@ -138,14 +138,14 @@ def available_score(server, job):
     )
 
 
-def capable_score(server, job):
+def capableScore(server, job):
     runtime = job["runtime"]
 
     queue = server["waiting"] + server["running"]
 
     core_waste, mem_waste, disk_waste = resource_waste(server, job)
 
-    fit = 1 - calculate_drf_score(server, job)
+    fit = 1 - calculate_drfScore(server, job)
 
     active_penalty = 0 if server["state"] in ("active", "booting") else 1
 
@@ -196,7 +196,7 @@ def select_server(job):
     capable = get_servers(f"GETS Capable {cores} {memory} {disk}")
 
     if capable:
-        capable.sort(key=lambda s: capable_score(s, job))
+        capable.sort(key=lambda s: capableScore(s, job))
         return capable[0]
 
     return None
