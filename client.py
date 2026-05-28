@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import socket
 import sys
 
@@ -10,11 +12,14 @@ sock = socket.socket()
 sock.settimeout(2)
 sock.connect((HOST, PORT))
 
+
 def send(msg):
     sock.sendall((msg + "\n").encode())
 
+
 def receive():
     data = b""
+
     while True:
         try:
             part = sock.recv(BUF_SIZE)
@@ -27,6 +32,7 @@ def receive():
             break
 
     return data.decode().strip()
+
 
 def get_servers(command):
     send(command)
@@ -70,6 +76,7 @@ def get_servers(command):
 
     return servers
 
+
 def calculate_drf_score(server, job):
     if server["cores"] <= 0 or server["memory"] <= 0 or server["disk"] <= 0:
         return 1
@@ -80,6 +87,7 @@ def calculate_drf_score(server, job):
         job["disk"] / server["disk"]
     )
 
+
 def resource_waste(server, job):
     return (
         server["cores"] - job["cores"],
@@ -87,101 +95,114 @@ def resource_waste(server, job):
         server["disk"] - job["disk"]
     )
 
+
+def available_score(server, job):
+    runtime = job["runtime"]
+
+    queue = server["waiting"] + server["running"]
+
+    core_waste, mem_waste, disk_waste = resource_waste(server, job)
+
+    fit = 1 - calculate_drf_score(server, job)
+
+    active_penalty = 0 if server["state"] == "active" else 1
+
+    if runtime <= 300:
+        return (
+            active_penalty,
+            queue,
+            fit,
+            core_waste,
+            mem_waste,
+            disk_waste,
+            server["id"]
+        )
+
+    if runtime <= 1200:
+        return (
+            fit,
+            core_waste,
+            active_penalty,
+            queue,
+            mem_waste,
+            disk_waste,
+            server["id"]
+        )
+
+    return (
+        active_penalty,
+        queue,
+        fit,
+        core_waste,
+        mem_waste,
+        disk_waste,
+        server["id"]
+    )
+
+
+def capable_score(server, job):
+    runtime = job["runtime"]
+
+    queue = server["waiting"] + server["running"]
+
+    core_waste, mem_waste, disk_waste = resource_waste(server, job)
+
+    fit = 1 - calculate_drf_score(server, job)
+
+    active_penalty = 0 if server["state"] in ("active", "booting") else 1
+
+    if runtime <= 300:
+        return (
+            queue,
+            active_penalty,
+            fit,
+            core_waste,
+            mem_waste,
+            disk_waste,
+            server["id"]
+        )
+
+    if runtime <= 1200:
+        return (
+            fit,
+            core_waste,
+            queue,
+            active_penalty,
+            mem_waste,
+            disk_waste,
+            server["id"]
+        )
+
+    return (
+        queue,
+        active_penalty,
+        fit,
+        core_waste,
+        mem_waste,
+        disk_waste,
+        server["id"]
+    )
+
+
 def select_server(job):
     cores = job["cores"]
     memory = job["memory"]
     disk = job["disk"]
-    runtime = job["runtime"]
 
     available = get_servers(f"GETS Avail {cores} {memory} {disk}")
 
     if available:
-        def available_score(s):
-            queue = s["waiting"] + s["running"]
-            core_waste, mem_waste, disk_waste = resource_waste(s, job)
-            fit = 1 - calculate_drf_score(s, job)
-            active_penalty = 0 if s["state"] == "active" else 1
-
-            if runtime <= 300:
-                return (
-                    active_penalty,
-                    queue,
-                    fit,
-                    core_waste,
-                    mem_waste,
-                    disk_waste,
-                    s["id"]
-                )
-
-            if runtime <= 1200:
-                return (
-                    fit,
-                    core_waste,
-                    active_penalty,
-                    queue,
-                    mem_waste,
-                    disk_waste,
-                    s["id"]
-                )
-
-            return (
-                active_penalty,
-                queue,
-                fit,
-                core_waste,
-                mem_waste,
-                disk_waste,
-                s["id"]
-            )
-
-        available.sort(key=available_score)
+        available.sort(key=lambda s: available_score(s, job))
         return available[0]
 
     capable = get_servers(f"GETS Capable {cores} {memory} {disk}")
 
     if capable:
-        def capable_score(s):
-            queue = s["waiting"] + s["running"]
-            core_waste, mem_waste, disk_waste = resource_waste(s, job)
-            fit = 1 - calculate_drf_score(s, job)
-            active_penalty = 0 if s["state"] in ("active", "booting") else 1
-
-            if runtime <= 300:
-                return (
-                    queue,
-                    active_penalty,
-                    fit,
-                    core_waste,
-                    mem_waste,
-                    disk_waste,
-                    s["id"]
-                )
-
-            if runtime <= 1200:
-                return (
-                    fit,
-                    core_waste,
-                    queue,
-                    active_penalty,
-                    mem_waste,
-                    disk_waste,
-                    s["id"]
-                )
-
-            return (
-                queue,
-                active_penalty,
-                fit,
-                core_waste,
-                mem_waste,
-                disk_waste,
-                s["id"]
-            )
-
-        capable.sort(key=capable_score)
+        capable.sort(key=lambda s: capable_score(s, job))
         return capable[0]
 
     return None
+
 
 def main():
     send("HELO")
@@ -221,6 +242,7 @@ def main():
     send("QUIT")
     receive()
     sock.close()
+
 
 if __name__ == "__main__":
     main()
