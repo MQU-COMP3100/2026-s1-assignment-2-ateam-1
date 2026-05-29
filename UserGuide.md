@@ -99,3 +99,11 @@ The testing script prints:
   - Resource utilisation
   - Server state
   - Resource waste minimisation
+  - Available CPU, memory, and disk resources
+  - Current system workload conditions
+  - Best-fit server selection principles
+  - DRF-inspired resource balancing strategies
+
+- The scheduler prioritises efficient resource allocation while attempting to maintain low turnaround times and balanced server utilisation.
+
+- Scheduling decisions may vary depending on the workload characteristics and resource availability of the simulator environment.
